@@ -1,0 +1,12 @@
+version: 2
+services:
+  web:
+    build:
+      nixpacks: python_3.11
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthcheck:
+      path: /health
+      interval: 30s
+      timeout: 10s
+    databases:
+      - postgres
