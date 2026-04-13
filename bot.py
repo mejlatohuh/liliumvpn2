@@ -59,6 +59,7 @@ def channel_kb():
 def main_kb(uid: int):
     b = InlineKeyboardBuilder()
     b.button(text="🌸 LiliumVPN", web_app=WebAppInfo(url=WEBAPP_URL))
+    b.button(text="📢 Канал", url="https://t.me/ProjectLilium")
     b.button(text="👤 Профиль", callback_data="profile")
     b.button(text="🆘 Поддержка", url="https://t.me/LiliumVPNsupport")
     if uid in ADMIN_IDS:
