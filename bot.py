@@ -20,13 +20,10 @@ dp = Dispatcher(storage=storage)
 router = Router()
 
 BANNER_SECTIONS = {
-    "home": "🏠 Главная",
     "profile": "👤 Профиль",
     "subscription": "◈ Подписка",
     "buy": "💳 Покупка",
     "referrals": "👥 Рефералы",
-    "support": "🆘 Поддержка",
-    "admin": "⚙️ Админ-панель",
 }
 
 class AdminSt(StatesGroup):
@@ -398,10 +395,13 @@ async def cb_banner_rm(call: CallbackQuery):
 
 @router.message(F.photo)
 async def banner_photo(msg: Message, state: FSMContext):
-    if await state.get_state() != BannerSt.waiting_media.state:
+    current_state = await state.get_state()
+    if current_state != "BannerSt:waiting_media":
         return
     data = await state.get_data()
-    section_id = data["banner_section"]
+    section_id = data.get("banner_section")
+    if not section_id:
+        return
     section_name = BANNER_SECTIONS.get(section_id, section_id)
     await db.set_banner(section_id, msg.photo[-1].file_id, "photo")
     await state.clear()
@@ -409,10 +409,13 @@ async def banner_photo(msg: Message, state: FSMContext):
 
 @router.message(F.video)
 async def banner_video(msg: Message, state: FSMContext):
-    if await state.get_state() != BannerSt.waiting_media.state:
+    current_state = await state.get_state()
+    if current_state != "BannerSt:waiting_media":
         return
     data = await state.get_data()
-    section_id = data["banner_section"]
+    section_id = data.get("banner_section")
+    if not section_id:
+        return
     section_name = BANNER_SECTIONS.get(section_id, section_id)
     await db.set_banner(section_id, msg.video.file_id, "video")
     await state.clear()
@@ -420,10 +423,13 @@ async def banner_video(msg: Message, state: FSMContext):
 
 @router.message(F.document)
 async def banner_animation(msg: Message, state: FSMContext):
-    if await state.get_state() != BannerSt.waiting_media.state:
+    current_state = await state.get_state()
+    if current_state != "BannerSt:waiting_media":
         return
     data = await state.get_data()
-    section_id = data["banner_section"]
+    section_id = data.get("banner_section")
+    if not section_id:
+        return
     section_name = BANNER_SECTIONS.get(section_id, section_id)
     if msg.document.mime_type and msg.document.mime_type.startswith("image/gif"):
         await db.set_banner(section_id, msg.document.file_id, "animation")
