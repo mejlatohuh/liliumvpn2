@@ -21,12 +21,10 @@ router = Router()
 
 async def safe_edit_or_answer(call: CallbackQuery, text: str, parse_mode: str = "Markdown", reply_markup=None):
     try:
-        if call.message.photo:
-            await call.message.answer(text, parse_mode=parse_mode, reply_markup=reply_markup)
-        else:
-            await call.message.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
+        await call.message.delete()
     except:
-        await call.message.answer(text, parse_mode=parse_mode, reply_markup=reply_markup)
+        pass
+    await call.message.answer(text, parse_mode=parse_mode, reply_markup=reply_markup)
 
 BANNER_SECTIONS = {
     "home": "🏠 Главная",
