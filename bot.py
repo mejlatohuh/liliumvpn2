@@ -453,6 +453,10 @@ async def banner_animation(msg: Message, state: FSMContext):
 
 @router.callback_query(F.data=="back")
 async def cb_back(call: CallbackQuery):
+    try:
+        await call.message.delete()
+    except:
+        pass
     banner = await db.get_banner("home")
     if banner:
         await call.message.answer_photo(photo=banner["file_id"], caption="Выбери действие:", reply_markup=main_kb(call.from_user.id))
