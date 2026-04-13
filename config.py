@@ -6,7 +6,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8520036141:AAEBBQykxyyucFm3J-6c0XlY5lNeGqRgm_g")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")  # e.g. https://liliumvpn.onrender.com
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://yourusername.github.io/liliumvpn")
-CHANNEL_ID = os.getenv("CHANNEL_ID", "@LiliumCandidum")
+CHANNEL_ID = os.getenv("CHANNEL_ID", "@ProjectLilium")
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # Supabase PostgreSQL URL
 
 OWNER_ID = 1882575888
