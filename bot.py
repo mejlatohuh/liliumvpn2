@@ -117,7 +117,7 @@ async def cb_check_sub(call: CallbackQuery):
 async def cb_profile(call: CallbackQuery):
     u = await db.get_user(call.from_user.id)
     if not u: return
-    await call.message.edit_text(
+    await call.message.answer(
         f"👤 *Профиль*\n\n🆔 ID: `{u['telegram_id']}`\n@{u['username'] or '—'}\n🏷 Код: `{u['ref_code']}`\n💰 Баланс: *{u['balance']} ₽*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад",callback_data="back")]])
@@ -137,7 +137,7 @@ async def cb_subscription(call: CallbackQuery):
         tr = f"{used//1024}ГБ / ∞" if limit==-1 else f"{used//1024}ГБ / {limit//1024}ГБ"
         text = f"📡 *Подписка*\n\n📦 *{sub['plan'].upper()}*\n📅 До: {sub['end_date'].strftime('%d.%m.%Y')}\n⏳ Осталось: *{d} дн.*\n📊 Трафик: {tr}\n🖥 Устройств: {sub['devices']}"
         kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔄 Продлить",callback_data="buy")],[InlineKeyboardButton(text="◀️ Назад",callback_data="back")]])
-    await call.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
+    await call.message.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 @router.callback_query(F.data=="buy")
 async def cb_buy(call: CallbackQuery):
@@ -148,7 +148,7 @@ async def cb_buy(call: CallbackQuery):
     b.button(text="🎁 Пробный (бесплатно)", callback_data="plan_trial")
     b.button(text="◀️ Назад", callback_data="back")
     b.adjust(1)
-    await call.message.edit_text("💳 *Выбери тариф:*", parse_mode="Markdown", reply_markup=b.as_markup())
+    await call.message.answer("💳 *Выбери тариф:*", parse_mode="Markdown", reply_markup=b.as_markup())
 
 @router.callback_query(F.data.startswith("plan_"))
 async def cb_plan(call: CallbackQuery):
@@ -161,7 +161,7 @@ async def cb_plan(call: CallbackQuery):
         if sub:
             await call.answer("У тебя уже есть подписка!", show_alert=True); return
         await db.create_subscription(call.from_user.id, "trial")
-        await call.message.edit_text(
+        await call.message.answer(
             "✅ *Пробный период активирован!*\n3 дня · 10 ГБ · 1 устройство\n\nОткрой кабинет для получения ключа.",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -179,7 +179,7 @@ async def cb_plan(call: CallbackQuery):
     b.button(text="◀️ Назад", callback_data="buy")
     b.adjust(1)
     traf = "∞" if plan['traffic_gb']==-1 else f"{plan['traffic_gb']} ГБ"
-    await call.message.edit_text(
+    await call.message.answer(
         f"📦 *{plan['name']}*\n\n📊 {traf}/мес · 🖥 {plan['devices']} уст. · 📅 {plan['days']} дней\n\nСпособ оплаты:",
         parse_mode="Markdown", reply_markup=b.as_markup()
     )
@@ -230,14 +230,14 @@ async def cb_pay_bal(call: CallbackQuery):
     await db.confirm_payment(payment["id"])
     await db.create_subscription(call.from_user.id, key)
     await db.process_referral_reward(call.from_user.id, plan["price_rub"], "balance")
-    await call.message.edit_text(f"✅ *{plan['name']}* активирован! Списано *{plan['price_rub']} ₽*.", parse_mode="Markdown",
+    await call.message.answer(f"✅ *{plan['name']}* активирован! Списано *{plan['price_rub']} ₽*.", parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🌸 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))]]))
 
 @router.callback_query(F.data.startswith("pay_crypto_"))
 async def cb_pay_crypto(call: CallbackQuery):
     key = call.data.replace("pay_crypto_",""); plan = PLANS.get(key)
     usdt = round(plan["price_rub"]/90, 2)
-    await call.message.edit_text(
+    await call.message.answer(
         f"🪙 *Оплата криптой*\n\n{plan['name']} · ~{usdt} USDT\n\nОтправь платёж через @CryptoBot и напиши в поддержку с чеком.",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -258,7 +258,7 @@ async def cb_ref(call: CallbackQuery):
     stats = await db.get_referral_stats(call.from_user.id)
     code = stats.get("ref_code","")
     link = f"https://t.me/LiliumVPNBot?start=ref_{code}"
-    await call.message.edit_text(
+    await call.message.answer(
         f"👥 *Рефералы*\n\n🏷 Твой код: `{code}`\n👫 Всего: *{stats.get('total',0)}*\n💰 Заработок: *+{stats.get('earned',0):.2f} ₽*\n\n📎 Ссылка:\n`{link}`\n\n_25% с каждой оплаты реферала_",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -285,14 +285,14 @@ async def cb_admin(call: CallbackQuery):
         b.button(text="🎨 Баннеры",callback_data="adm_banners")
     b.button(text="◀️ Назад",callback_data="back")
     b.adjust(1)
-    await call.message.edit_text(text, parse_mode="Markdown", reply_markup=b.as_markup())
+    await call.message.answer(text, parse_mode="Markdown", reply_markup=b.as_markup())
 
 @router.callback_query(F.data=="adm_users")
 async def cb_adm_users(call: CallbackQuery):
     if call.from_user.id not in ADMIN_IDS: return
     users = await db.get_all_users_paginated(0,20)
     lines = [f"• @{u['username'] or '—'} `{u['telegram_id']}` [{u['role']}]" for u in users[:20]]
-    await call.message.edit_text("👥 *Пользователи (20 последних):*\n\n"+"\n".join(lines),
+    await call.message.answer("👥 *Пользователи (20 последних):*\n\n"+"\n".join(lines),
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад",callback_data="admin")]]))
 
@@ -303,13 +303,13 @@ async def cb_adm_refs(call: CallbackQuery):
     refs = stats.get("referrals",[])
     lines = [f"└ @{r['username'] or r['first_name'] or '—'} · `{r['ref_code']}` · {'✅' if r['has_sub'] else '❌'}" for r in refs[:15]]
     text = f"🌳 *Твои рефералы* ({stats.get('total',0)}):\n\n" + ("\n".join(lines) if lines else "Пока нет")
-    await call.message.edit_text(text, parse_mode="Markdown",
+    await call.message.answer(text, parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад",callback_data="admin")]]))
 
 @router.callback_query(F.data=="adm_bc")
 async def cb_bc(call: CallbackQuery, state: FSMContext):
     if call.from_user.id != OWNER_ID: return
-    await call.message.edit_text("📢 Введи текст рассылки:")
+    await call.message.answer("📢 Введи текст рассылки:")
     await state.set_state(AdminSt.broadcast)
 
 @router.message(AdminSt.broadcast)
@@ -325,7 +325,7 @@ async def do_bc(msg: Message, state: FSMContext):
 @router.callback_query(F.data=="adm_gb")
 async def cb_gb(call: CallbackQuery, state: FSMContext):
     if call.from_user.id != OWNER_ID: return
-    await call.message.edit_text("💰 Введи Telegram ID:")
+    await call.message.answer("💰 Введи Telegram ID:")
     await state.set_state(AdminSt.give_id)
 
 @router.message(AdminSt.give_id)
@@ -343,7 +343,7 @@ async def do_gb_amt(msg: Message, state: FSMContext):
 @router.callback_query(F.data=="adm_promo")
 async def cb_promo(call: CallbackQuery, state: FSMContext):
     if call.from_user.id != OWNER_ID: return
-    await call.message.edit_text("🎟 Введи: КОД СУММА КОЛИЧЕСТВО\nПример: `LILIUM50 50 100`", parse_mode="Markdown")
+    await call.message.answer("🎟 Введи: КОД СУММА КОЛИЧЕСТВО\nПример: `LILIUM50 50 100`", parse_mode="Markdown")
     await state.set_state(AdminSt.promo)
 
 @router.message(AdminSt.promo)
@@ -367,7 +367,7 @@ async def cb_banners(call: CallbackQuery):
     b.button(text="🗑 Удалить баннер", callback_data="banner_del")
     b.button(text="◀️ Назад", callback_data="admin")
     b.adjust(1)
-    await call.message.edit_text("🎨 *Управление баннерами*\n\nВыбери секцию для изменения:", parse_mode="Markdown", reply_markup=b.as_markup())
+    await call.message.answer("🎨 *Управление баннерами*\n\nВыбери секцию для изменения:", parse_mode="Markdown", reply_markup=b.as_markup())
 
 @router.callback_query(F.data.startswith("banner_set_"))
 async def cb_banner_set(call: CallbackQuery, state: FSMContext):
@@ -375,7 +375,7 @@ async def cb_banner_set(call: CallbackQuery, state: FSMContext):
     section_id = call.data.replace("banner_set_", "")
     section_name = BANNER_SECTIONS.get(section_id, section_id)
     await state.update_data(banner_section=section_id)
-    await call.message.edit_text(
+    await call.message.answer(
         f"📤 Отправь фото, гиф или видео для секции *{section_name}*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -392,7 +392,7 @@ async def cb_banner_del(call: CallbackQuery):
         b.button(text=name, callback_data=f"banner_rm_{sid}")
     b.button(text="◀️ Назад", callback_data="adm_banners")
     b.adjust(1)
-    await call.message.edit_text("🗑 *Удаление баннера*\n\nВыбери секцию:", parse_mode="Markdown", reply_markup=b.as_markup())
+    await call.message.answer("🗑 *Удаление баннера*\n\nВыбери секцию:", parse_mode="Markdown", reply_markup=b.as_markup())
 
 @router.callback_query(F.data.startswith("banner_rm_"))
 async def cb_banner_rm(call: CallbackQuery):
