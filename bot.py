@@ -396,8 +396,10 @@ async def cb_banner_rm(call: CallbackQuery):
     await call.answer(f"✅ Баннер для {section_name} удалён", show_alert=True)
     await cb_banners(call)
 
-@router.message(F.photo, state=BannerSt.waiting_media)
+@router.message(F.photo)
 async def banner_photo(msg: Message, state: FSMContext):
+    if await state.get_state() != BannerSt.waiting_media.state:
+        return
     data = await state.get_data()
     section_id = data["banner_section"]
     section_name = BANNER_SECTIONS.get(section_id, section_id)
@@ -405,8 +407,10 @@ async def banner_photo(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(f"✅ Баннер для *{section_name}* установлен!", parse_mode="Markdown")
 
-@router.message(F.video, state=BannerSt.waiting_media)
+@router.message(F.video)
 async def banner_video(msg: Message, state: FSMContext):
+    if await state.get_state() != BannerSt.waiting_media.state:
+        return
     data = await state.get_data()
     section_id = data["banner_section"]
     section_name = BANNER_SECTIONS.get(section_id, section_id)
@@ -414,8 +418,10 @@ async def banner_video(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(f"✅ Баннер для *{section_name}* установлен!", parse_mode="Markdown")
 
-@router.message(F.document, state=BannerSt.waiting_media)
+@router.message(F.document)
 async def banner_animation(msg: Message, state: FSMContext):
+    if await state.get_state() != BannerSt.waiting_media.state:
+        return
     data = await state.get_data()
     section_id = data["banner_section"]
     section_name = BANNER_SECTIONS.get(section_id, section_id)
