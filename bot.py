@@ -458,8 +458,16 @@ async def cb_back(call: CallbackQuery):
 
 dp.include_router(router)
 
+DEFAULT_BANNER = "AgACAgIAAxkDAAIBWGnc_nop2a-y2Ietm3j35jZT4IxtAAJjEWsbZJHoSjjT4-oCU58pAQADAgADdwADOwQ"
+
 async def main():
     await db.init_db()
+    
+    # Set default home banner if not exists
+    banner = await db.get_banner("home")
+    if not banner:
+        await db.set_banner("home", DEFAULT_BANNER, "photo")
+    
     await dp.start_polling(bot, skip_updates=True)
 
 if __name__=="__main__":
