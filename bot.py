@@ -20,6 +20,7 @@ dp = Dispatcher(storage=storage)
 router = Router()
 
 BANNER_SECTIONS = {
+    "home": "🏠 Главная",
     "profile": "👤 Профиль",
     "subscription": "◈ Подписка",
     "buy": "💳 Покупка",
@@ -81,25 +82,34 @@ async def start(msg: Message):
         await msg.answer("🎁 *+50 ₽* начислено за переход по реферальной ссылке!", parse_mode="Markdown")
 
     text = "🌸 *LiliumVPN*\n\n"
+    banner = await db.get_banner("home")
+    
     if is_new:
-        text += "Добро пожаловать! Активируй *бесплатный пробный период* ниже.\n"
+        text = "Добро пожаловать! Активируй *бесплатный пробный период* ниже."
     else:
         sub = await db.get_active_subscription(u.id)
         if sub:
             import datetime
             d = max(0,(sub["end_date"] - datetime.datetime.utcnow()).days)
-            text += f"📡 Тариф: *{sub['plan'].upper()}* · Осталось: *{d} дн.*\n"
+            text = f"📡 Тариф: *{sub['plan'].upper()}* · Осталось: *{d} дн.*\nВыбери действие:"
         else:
-            text += "⚠️ Нет активной подписки.\n"
-    text += "\nВыбери действие:"
-    await msg.answer(text, parse_mode="Markdown", reply_markup=main_kb(u.id))
+            text = "⚠️ Нет активной подписки.\n\nВыбери действие:"
+    
+    if banner:
+        await msg.answer_photo(photo=banner["file_id"], caption=text, parse_mode="Markdown", reply_markup=main_kb(u.id))
+    else:
+        await msg.answer(text, parse_mode="Markdown", reply_markup=main_kb(u.id))
 
 @router.callback_query(F.data=="check_sub")
 async def cb_check_sub(call: CallbackQuery):
     if await check_sub(call.from_user.id):
         await db.set_channel_subscribed(call.from_user.id, True)
-        await call.message.edit_text("✅ *Добро пожаловать в LiliumVPN!*", parse_mode="Markdown")
-        await call.message.answer("Выбери действие:", reply_markup=main_kb(call.from_user.id))
+        banner = await db.get_banner("home")
+        text = "✅ *Добро пожаловать в LiliumVPN!*\n\nВыбери действие:"
+        if banner:
+            await call.message.answer_photo(photo=banner["file_id"], caption=text, parse_mode="Markdown", reply_markup=main_kb(call.from_user.id))
+        else:
+            await call.message.answer(text, parse_mode="Markdown", reply_markup=main_kb(call.from_user.id))
     else:
         await call.answer("Ты ещё не подписался!", show_alert=True)
 
@@ -440,7 +450,11 @@ async def banner_animation(msg: Message, state: FSMContext):
 
 @router.callback_query(F.data=="back")
 async def cb_back(call: CallbackQuery):
-    await call.message.edit_text("Выбери действие:", reply_markup=main_kb(call.from_user.id))
+    banner = await db.get_banner("home")
+    if banner:
+        await call.message.answer_photo(photo=banner["file_id"], caption="Выбери действие:", reply_markup=main_kb(call.from_user.id))
+    else:
+        await call.message.answer("Выбери действие:", reply_markup=main_kb(call.from_user.id))
 
 dp.include_router(router)
 
