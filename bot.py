@@ -19,11 +19,24 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 router = Router()
 
+BANNER_SECTIONS = {
+    "home": "🏠 Главная",
+    "profile": "👤 Профиль",
+    "subscription": "◈ Подписка",
+    "buy": "💳 Покупка",
+    "referrals": "👥 Рефералы",
+    "support": "🆘 Поддержка",
+    "admin": "⚙️ Админ-панель",
+}
+
 class AdminSt(StatesGroup):
     broadcast = State()
     give_id = State()
     give_amt = State()
     promo = State()
+
+class BannerSt(StatesGroup):
+    waiting_media = State()
 
 async def check_sub(user_id: int) -> bool:
     try:
@@ -40,14 +53,11 @@ def channel_kb():
 
 def main_kb(uid: int):
     b = InlineKeyboardBuilder()
-    b.button(text="🌸 Открыть LiliumVPN", web_app=WebAppInfo(url=WEBAPP_URL))
+    b.button(text="🌸 LiliumVPN", web_app=WebAppInfo(url=WEBAPP_URL))
     b.button(text="👤 Профиль", callback_data="profile")
-    b.button(text="◈ Подписка", callback_data="subscription")
-    b.button(text="💳 Купить", callback_data="buy")
-    b.button(text="👥 Рефералы", callback_data="referrals")
-    b.button(text="🆘 Поддержка", url="https://t.me/ProjectLilium")
+    b.button(text="🆘 Поддержка", url="https://t.me/LiliumVPNsupport")
     if uid in ADMIN_IDS:
-        b.button(text="⚙️ Админ", callback_data="admin")
+        b.button(text="⚙️ Админ-панель", callback_data="admin")
     b.adjust(1)
     return b.as_markup()
 
@@ -265,6 +275,7 @@ async def cb_admin(call: CallbackQuery):
         b.button(text="📢 Рассылка",callback_data="adm_bc")
         b.button(text="💰 Начислить",callback_data="adm_gb")
         b.button(text="🎟 Промокод",callback_data="adm_promo")
+        b.button(text="🎨 Баннеры",callback_data="adm_banners")
     b.button(text="◀️ Назад",callback_data="back")
     b.adjust(1)
     await call.message.edit_text(text, parse_mode="Markdown", reply_markup=b.as_markup())
@@ -337,6 +348,83 @@ async def do_promo(msg: Message, state: FSMContext):
     uses = int(parts[2]) if len(parts)>2 else None
     await db.create_promo(code,amt,uses)
     await msg.answer(f"✅ Промокод `{code}` создан: +{amt}₽", parse_mode="Markdown")
+
+@router.callback_query(F.data=="adm_banners")
+async def cb_banners(call: CallbackQuery):
+    if call.from_user.id != OWNER_ID: return
+    b = InlineKeyboardBuilder()
+    for sid, name in BANNER_SECTIONS.items():
+        banner = await db.get_banner(sid)
+        status = "✅" if banner else "⬜"
+        b.button(text=f"{status} {name}", callback_data=f"banner_set_{sid}")
+    b.button(text="🗑 Удалить баннер", callback_data="banner_del")
+    b.button(text="◀️ Назад", callback_data="admin")
+    b.adjust(1)
+    await call.message.edit_text("🎨 *Управление баннерами*\n\nВыбери секцию для изменения:", parse_mode="Markdown", reply_markup=b.as_markup())
+
+@router.callback_query(F.data.startswith("banner_set_"))
+async def cb_banner_set(call: CallbackQuery, state: FSMContext):
+    if call.from_user.id != OWNER_ID: return
+    section_id = call.data.replace("banner_set_", "")
+    section_name = BANNER_SECTIONS.get(section_id, section_id)
+    await state.update_data(banner_section=section_id)
+    await call.message.edit_text(
+        f"📤 Отправь фото, гиф или видео для секции *{section_name}*",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="adm_banners")]
+        ])
+    )
+    await state.set_state(BannerSt.waiting_media)
+
+@router.callback_query(F.data=="banner_del")
+async def cb_banner_del(call: CallbackQuery):
+    if call.from_user.id != OWNER_ID: return
+    b = InlineKeyboardBuilder()
+    for sid, name in BANNER_SECTIONS.items():
+        b.button(text=name, callback_data=f"banner_rm_{sid}")
+    b.button(text="◀️ Назад", callback_data="adm_banners")
+    b.adjust(1)
+    await call.message.edit_text("🗑 *Удаление баннера*\n\nВыбери секцию:", parse_mode="Markdown", reply_markup=b.as_markup())
+
+@router.callback_query(F.data.startswith("banner_rm_"))
+async def cb_banner_rm(call: CallbackQuery):
+    if call.from_user.id != OWNER_ID: return
+    section_id = call.data.replace("banner_rm_", "")
+    section_name = BANNER_SECTIONS.get(section_id, section_id)
+    await db.delete_banner(section_id)
+    await call.answer(f"✅ Баннер для {section_name} удалён", show_alert=True)
+    await cb_banners(call)
+
+@router.message(F.photo, state=BannerSt.waiting_media)
+async def banner_photo(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    section_id = data["banner_section"]
+    section_name = BANNER_SECTIONS.get(section_id, section_id)
+    await db.set_banner(section_id, msg.photo[-1].file_id, "photo")
+    await state.clear()
+    await msg.answer(f"✅ Баннер для *{section_name}* установлен!", parse_mode="Markdown")
+
+@router.message(F.video, state=BannerSt.waiting_media)
+async def banner_video(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    section_id = data["banner_section"]
+    section_name = BANNER_SECTIONS.get(section_id, section_id)
+    await db.set_banner(section_id, msg.video.file_id, "video")
+    await state.clear()
+    await msg.answer(f"✅ Баннер для *{section_name}* установлен!", parse_mode="Markdown")
+
+@router.message(F.document, state=BannerSt.waiting_media)
+async def banner_animation(msg: Message, state: FSMContext):
+    data = await state.get_data()
+    section_id = data["banner_section"]
+    section_name = BANNER_SECTIONS.get(section_id, section_id)
+    if msg.document.mime_type and msg.document.mime_type.startswith("image/gif"):
+        await db.set_banner(section_id, msg.document.file_id, "animation")
+        await state.clear()
+        await msg.answer(f"✅ Баннер для *{section_name}* установлен!", parse_mode="Markdown")
+    else:
+        await msg.answer("❌ Поддерживаются только фото, видео или GIF. Отправь другое медиа.")
 
 @router.callback_query(F.data=="back")
 async def cb_back(call: CallbackQuery):

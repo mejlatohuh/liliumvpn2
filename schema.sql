@@ -103,6 +103,15 @@ INSERT INTO servers (name, location, flag, host, active) VALUES
 ('FI-HEL-ND-01', 'Helsinki, Finland', '🇫🇮', 'fi1.liliumvpn.net', true)
 ON CONFLICT DO NOTHING;
 
+-- Banners table for section images
+CREATE TABLE IF NOT EXISTS banners (
+    id SERIAL PRIMARY KEY,
+    section_id VARCHAR(50) UNIQUE NOT NULL,
+    file_id VARCHAR(500) NOT NULL,
+    media_type VARCHAR(20) NOT NULL,  -- photo / video / animation
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_tg_id ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);

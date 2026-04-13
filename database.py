@@ -197,3 +197,22 @@ async def create_promo(code: str, discount_rub: float, uses=None):
             "INSERT INTO promo_codes (code,discount_rub,uses_left,active,created_at) VALUES ($1,$2,$3,true,NOW()) ON CONFLICT (code) DO UPDATE SET discount_rub=$2,uses_left=$3,active=true",
             code.upper(), discount_rub, uses
         )
+
+async def set_banner(section_id: str, file_id: str, media_type: str):
+    p = await get_pool()
+    async with p.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO banners (section_id, file_id, media_type) VALUES ($1, $2, $3) ON CONFLICT (section_id) DO UPDATE SET file_id=$2, media_type=$3, created_at=NOW()",
+            section_id, file_id, media_type
+        )
+
+async def get_banner(section_id: str):
+    p = await get_pool()
+    async with p.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM banners WHERE section_id=$1", section_id)
+        return dict(row) if row else None
+
+async def delete_banner(section_id: str):
+    p = await get_pool()
+    async with p.acquire() as conn:
+        await conn.execute("DELETE FROM banners WHERE section_id=$1", section_id)
